@@ -35,7 +35,7 @@ func getFlashcardsForTopic(_ topic: String) -> [Flashcard] {
             Flashcard(front: "amarillo", back: "yellow"),
             Flashcard(front: "negro", back: "black")
         ]
-    // Add more cases for other topics
+    
     default:
         return []
     }
@@ -55,6 +55,9 @@ let topics = [
 ]
 
 struct LearnLanguageView: View {
+//    var viewModel = String
+    var progressStore = PersistentProgress()
+    
     var body: some View {
         NavigationStack {
             List(topics, id: \.self) { topic in
