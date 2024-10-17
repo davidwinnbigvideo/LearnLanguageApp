@@ -7,6 +7,40 @@
 
 import SwiftUI
 
+struct Flashcard {
+    let front: String
+    let back: String
+}
+
+func getFlashcardsForTopic(_ topic: String) -> [Flashcard] {
+    switch topic {
+    case "Numbers":
+        return [
+            Flashcard(front: "uno", back: "one"),
+            Flashcard(front: "dos", back: "two"),
+            Flashcard(front: "tres", back: "three"),
+            Flashcard(front: "cuatro", back: "four"),
+            Flashcard(front: "cinco", back: "five"),
+            Flashcard(front: "seis", back: "six"),
+            Flashcard(front: "siete", back: "seven"),
+            Flashcard(front: "ocho", back: "eight"),
+            Flashcard(front: "nueve", back: "nine"),
+            Flashcard(front: "diez", back: "ten")
+        ]
+    case "Colors":
+        return [
+            Flashcard(front: "rojo", back: "red"),
+            Flashcard(front: "azul", back: "blue"),
+            Flashcard(front: "verde", back: "green"),
+            Flashcard(front: "amarillo", back: "yellow"),
+            Flashcard(front: "negro", back: "black")
+        ]
+    // Add more cases for other topics
+    default:
+        return []
+    }
+}
+
 let topics = [
     "Basic Greetings and farewells",
     "Common Phrases",
@@ -51,7 +85,7 @@ struct TopicLessonView: View {
         VStack {
             Text("Lesson about topic \(topic) goes here")
                 NavigationLink {
-                    QuizScreen()
+                    QuizScreen(topic: topic)
                 } label: {
                     Text("Take the Quiz")
                 }
@@ -61,9 +95,11 @@ struct TopicLessonView: View {
 }
 
 struct QuizScreen: View {
+    let topic: String
+    
     var body: some View {
         VStack(spacing: 0) {
-                QuizQuestionCard()
+            QuizQuestionCard(topic: topic)
                     .frame(height: UIScreen.main.bounds.height * 0.6)
             Form {
                     Section {
@@ -79,24 +115,43 @@ struct QuizScreen: View {
 }
 
 struct QuizQuestionCard: View {
+    let topic: String
+    let flashcards: [Flashcard]
+    @State private var flippedIndices: Set<Int> = []
+
+    init(topic: String) {
+        self.topic = topic
+        self.flashcards = getFlashcardsForTopic(topic)
+    }
+
     var body: some View {
         TabView {
-            ForEach(0..<5) { index in
-                VStack {
-                    Text("Page \(index + 1)")
+            ForEach(flashcards.indices, id: \.self) { index in
+                ZStack {
+                    Text(flashcards[index].front) // Spanish word
+                        .opacity(flippedIndices.contains(index) ? 0 : 1) // Hidden if flipped
                         .font(.largeTitle)
                         .padding()
-                    Image(systemName: "\(index + 1).circle.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 100, height: 100)
+
+                    Text(flashcards[index].back) // English word
+                        .opacity(flippedIndices.contains(index) ? 1 : 0) // Hidden if not flipped
+                        .font(.largeTitle)
                         .padding()
                 }
-                .background(Color(.systemBackground))
+                .frame(width: 300, height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .shadow(radius: 5)
                 .padding()
-                
+                .cardify(isFaceUp: !flippedIndices.contains(index))
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        if flippedIndices.contains(index) {
+                            flippedIndices.remove(index) // Flip back to Spanish
+                        } else {
+                            flippedIndices.insert(index) // Flip to English
+                        }
+                    }
+                }
             }
         }
         .tabViewStyle(.page)
