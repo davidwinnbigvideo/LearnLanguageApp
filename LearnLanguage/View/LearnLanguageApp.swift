@@ -11,7 +11,7 @@ import SwiftUI
 struct LearnLanguageApp: App {
     var body: some Scene {
         WindowGroup {
-            LearnLanguageView()
+            LearnLanguageView(model: Model.sampleData())
         }
     }
 }

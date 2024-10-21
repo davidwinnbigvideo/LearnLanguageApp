@@ -10,13 +10,10 @@ import Foundation
 typealias ItemProgress = [String: Bool]
 typealias TopicProgress = [String: ItemProgress]
 
-//let myProgress: TopicProgress = [
-//    "Numbers (1 to 10)": [ "read": true, "studied": true, "passed": true ],
-//    "Months of the Year": ["read": true, "studied": true, "passed": true]
-//] This is what the default dictionary looks like
-
 struct PersistentProgress {
-    private static func defaultProgress() -> TopicProgress {
+    private let model: Model
+    
+    private static func defaultProgress(for model: Model) -> TopicProgress {
         var defaultProgress: TopicProgress = [:]
         
         for topic in model.topics {
@@ -29,14 +26,21 @@ struct PersistentProgress {
         return defaultProgress
     }
     
-    private static func readProgress() -> TopicProgress {
-        UserDefaults.standard.dictionary(forKey: Key.progress) as? TopicProgress ?? TopicProgress()
+    private static func readProgress(for model: Model) -> TopicProgress {
+        UserDefaults.standard.dictionary(forKey: Key.progress) as? TopicProgress ?? defaultProgress(for: model)
     }
     
-    var progress = PersistentProgress.readProgress() {
-        didSet {
-            UserDefaults.standard.set(progress, forKey: Key.progress)
+    var progress: TopicProgress {
+        get {
+            PersistentProgress.readProgress(for: model)
         }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Key.progress)
+        }
+    }
+    
+    init(model: Model) {
+        self.model = model
     }
     
     private struct Key {

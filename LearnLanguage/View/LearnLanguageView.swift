@@ -7,152 +7,199 @@
 
 import SwiftUI
 
-struct Flashcard {
-    let front: String
-    let back: String
-}
-
-func getFlashcardsForTopic(_ topic: String) -> [Flashcard] {
-    switch topic {
-    case "Numbers":
-        return [
-            Flashcard(front: "uno", back: "one"),
-            Flashcard(front: "dos", back: "two"),
-            Flashcard(front: "tres", back: "three"),
-            Flashcard(front: "cuatro", back: "four"),
-            Flashcard(front: "cinco", back: "five"),
-            Flashcard(front: "seis", back: "six"),
-            Flashcard(front: "siete", back: "seven"),
-            Flashcard(front: "ocho", back: "eight"),
-            Flashcard(front: "nueve", back: "nine"),
-            Flashcard(front: "diez", back: "ten")
-        ]
-    case "Colors":
-        return [
-            Flashcard(front: "rojo", back: "red"),
-            Flashcard(front: "azul", back: "blue"),
-            Flashcard(front: "verde", back: "green"),
-            Flashcard(front: "amarillo", back: "yellow"),
-            Flashcard(front: "negro", back: "black")
-        ]
-    
-    default:
-        return []
-    }
-}
-
-let topics = [
-    "Basic Greetings and farewells",
-    "Common Phrases",
-    "Numbers",
-    "Colors",
-    "Family Members",
-    "Food and Drink",
-    "Common Adjectives",
-    "Days of the week",
-    "Weather Vocabulary",
-    "Common Verbs"
-]
-
 struct LearnLanguageView: View {
-//    var viewModel = String
-    var progressStore = PersistentProgress()
-    
+    @StateObject private var viewModel: ViewModel
+
+    init(model: Model) {
+        print("LearnLanguageView init")
+        self._viewModel = StateObject(wrappedValue: ViewModel(model: model))
+    }
+
     var body: some View {
         NavigationStack {
-            List(topics, id: \.self) { topic in
-                TopicCell(topic: topic)
+            List(viewModel.topics.indices, id: \.self) { index in
+                TopicCell(topic: viewModel.topics[index])
             }
             .listStyle(.plain)
             .navigationTitle("Learn Language")
+        }
+        .environmentObject(viewModel)
+        .onAppear {
+            print("LearnLanguageView appeared")
         }
     }
 }
 
 struct TopicCell: View {
-    let topic: String
-    
+    let topic: Model.Topic
+
     var body: some View {
         NavigationLink {
             TopicLessonView(topic: topic)
         } label: {
-            Text(topic)
+            Text(topic.title)
         }
     }
 }
 
 struct TopicLessonView: View {
-    let topic: String
-    
+    @EnvironmentObject var viewModel: ViewModel
+    let topic: Model.Topic
+
     var body: some View {
-        VStack {
-            Text("Lesson about topic \(topic) goes here")
-                NavigationLink {
-                    QuizScreen(topic: topic)
-                } label: {
-                    Text("Take the Quiz")
-                }
+        VStack(spacing: 20) {
+            Text(topic.lessonText)
+                .padding()
+            
+            NavigationLink {
+                FlashcardView()
+            } label: {
+                Text("Practice Vocabulary")
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+
+            NavigationLink {
+                QuizScreen()
+            } label: {
+                Text("Take the Quiz")
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
         }
-        .navigationTitle("\(topic)")
+        .navigationTitle(topic.title)
+        .onAppear {
+            print("TopicLessonView appeared")
+        }
     }
 }
 
 struct QuizScreen: View {
-    let topic: String
-    
+    @EnvironmentObject var viewModel: ViewModel
+    @State private var selectedAnswer: String?
+    @State private var showFeedback: Bool = false
+    @State private var isCorrect: Bool = false
+
     var body: some View {
-        VStack(spacing: 0) {
-            QuizQuestionCard(topic: topic)
-                    .frame(height: UIScreen.main.bounds.height * 0.6)
-            Form {
-                    Section {
-                        Text("a. Answer 1")
-                        Text("b. Answer 2")
-                        Text("c. Answer 3")
-                    }
-                .listStyle(PlainListStyle())
+        if viewModel.quizFinished {
+            VStack(spacing: 20) {
+                Text("Quiz Completed!")
+                    .font(.title)
+                    .fontWeight(.bold)
+                Text("Your score: \(viewModel.score)/\(viewModel.currentTopic.quiz.count)")
+                    .font(.headline)
+                Button("Restart Quiz") {
+                    viewModel.resetQuiz()
+                }
+                .padding()
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
             }
+        } else {
+            VStack(spacing: 20) {
+                QuizQuestionCard()
+                    .frame(height: UIScreen.main.bounds.height * 0.4)
+                
+                if let answers = viewModel.currentQuizItem.answer {
+                    ForEach(answers, id: \.self) { answer in
+                        Button(action: {
+                            selectedAnswer = answer
+                        }) {
+                            Text(answer)
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(selectedAnswer == answer ? Color.blue : Color.gray.opacity(0.2))
+                                .foregroundColor(selectedAnswer == answer ? .white : .black)
+                                .cornerRadius(10)
+                        }
+                    }
+                }
+                
+                Button("Submit Answer") {
+                    if let selected = selectedAnswer {
+                        viewModel.userAnswer = selected
+                        isCorrect = viewModel.checkAnswer()
+                        showFeedback = true
+                    }
+                }
+                .disabled(selectedAnswer == nil)
+                .padding()
+                .background(selectedAnswer != nil ? Color.green : Color.gray)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                
+                if showFeedback {
+                    Text(isCorrect ? "Correct!" : "Incorrect. The correct answer is \(viewModel.currentQuizItem.correctAnswer)")
+                        .foregroundColor(isCorrect ? .green : .red)
+                        .padding()
+                    
+                    Button("Next Question") {
+                        viewModel.nextQuizItem()
+                        selectedAnswer = nil
+                        showFeedback = false
+                    }
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+            }
+            .padding()
+            .navigationTitle("Quiz")
         }
-        Text("Quiz Screen")
     }
 }
 
 struct QuizQuestionCard: View {
-    let topic: String
-    let flashcards: [Flashcard]
-    @State private var flippedIndices: Set<Int> = []
-
-    init(topic: String) {
-        self.topic = topic
-        self.flashcards = getFlashcardsForTopic(topic)
-    }
+    @EnvironmentObject var viewModel: ViewModel
 
     var body: some View {
-        TabView {
-            ForEach(flashcards.indices, id: \.self) { index in
-                ZStack {
-                    Text(flashcards[index].front) // Spanish word
-                        .opacity(flippedIndices.contains(index) ? 0 : 1) // Hidden if flipped
-                        .font(.largeTitle)
-                        .padding()
+        VStack {
+            Text(viewModel.currentQuizItem.question)
+                .font(.title2)
+                .padding()
+                .multilineTextAlignment(.center)
+            
+            if viewModel.currentQuizItem.questionType == .fillInTheBlank {
+                TextField("Your answer", text: $viewModel.userAnswer)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(10)
+        .padding()
+    }
+}
 
-                    Text(flashcards[index].back) // English word
-                        .opacity(flippedIndices.contains(index) ? 1 : 0) // Hidden if not flipped
-                        .font(.largeTitle)
-                        .padding()
+struct FlashcardView: View {
+    @EnvironmentObject var viewModel: ViewModel
+    @State private var isFaceUp = true
+    
+    var body: some View {
+        TabView {
+            let vocabulary = viewModel.getVocabularyList().shuffled()
+            ForEach(0..<vocabulary.count, id: \.self) { currentIndex in
+                ZStack {
+                    Text(vocabulary[currentIndex].0) // Spanish word
+                        .opacity(isFaceUp ? 1 : 0)
+                    Text(vocabulary[currentIndex].1) // English translation
+                        .opacity(isFaceUp ? 0 : 1)
                 }
                 .frame(width: 300, height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .shadow(radius: 5)
                 .padding()
-                .cardify(isFaceUp: !flippedIndices.contains(index))
+                .cardify(isFaceUp: isFaceUp)
                 .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        if flippedIndices.contains(index) {
-                            flippedIndices.remove(index) // Flip back to Spanish
-                        } else {
-                            flippedIndices.insert(index) // Flip to English
-                        }
+                    withAnimation {
+                        isFaceUp.toggle()
                     }
                 }
             }
@@ -163,5 +210,5 @@ struct QuizQuestionCard: View {
 }
 
 #Preview {
-    LearnLanguageView()
+    LearnLanguageView(model: Model.sampleData())
 }
