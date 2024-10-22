@@ -1,6 +1,7 @@
 {
   "images" : [
     {
+      "filename" : "brain 1.jpg",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -23,6 +24,7 @@
           "value" : "tinted"
         }
       ],
+      "filename" : "brain.jpg",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

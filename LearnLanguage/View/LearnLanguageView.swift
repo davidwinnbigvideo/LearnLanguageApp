@@ -8,17 +8,13 @@
 import SwiftUI
 
 struct LearnLanguageView: View {
-    @StateObject private var viewModel: ViewModel
 
-    init(model: Model) {
-        print("LearnLanguageView init")
-        self._viewModel = StateObject(wrappedValue: ViewModel(model: model))
-    }
+    @EnvironmentObject var viewModel: ViewModel
 
     var body: some View {
         NavigationStack {
-            List(viewModel.topics.indices, id: \.self) { index in
-                TopicCell(topic: viewModel.topics[index])
+            List(viewModel.topicsViewData) { topicData in
+                TopicCell(topicData: topicData)
             }
             .listStyle(.plain)
             .navigationTitle("Learn Language")
@@ -31,25 +27,35 @@ struct LearnLanguageView: View {
 }
 
 struct TopicCell: View {
-    let topic: Model.Topic
+    let topicData: ViewModel.TopicViewData
 
     var body: some View {
         NavigationLink {
-            TopicLessonView(topic: topic)
+            TopicLessonView(topicId: topicData.id)
         } label: {
-            Text(topic.title)
+            Text(topicData.title)
         }
     }
 }
 
 struct TopicLessonView: View {
     @EnvironmentObject var viewModel: ViewModel
-    let topic: Model.Topic
+    let topicId: Int
+    
+    private struct Url {
+        static let google = "https://google.com/".url
+    }
+    
+    private var topicData: ViewModel.TopicViewData {
+        viewModel.getTopicViewData(at: topicId)
+    }
 
     var body: some View {
         VStack(spacing: 20) {
-            Text(topic.lessonText)
-                .padding()
+            WebView(
+                data: topicData.lessonText,
+                request: URLRequest(url: Url.google)
+            )
             
             NavigationLink {
                 FlashcardView()
@@ -71,8 +77,9 @@ struct TopicLessonView: View {
                     .cornerRadius(10)
             }
         }
-        .navigationTitle(topic.title)
+        .navigationTitle(topicData.title)
         .onAppear {
+            viewModel.currentTopicIndex = topicId
             print("TopicLessonView appeared")
         }
     }
@@ -189,7 +196,7 @@ struct FlashcardView: View {
                 ZStack {
                     Text(vocabulary[currentIndex].0) // Spanish word
                         .opacity(isFaceUp ? 1 : 0)
-                    Text(vocabulary[currentIndex].1) // English translation
+                    Text(vocabulary[currentIndex].1) // English word
                         .opacity(isFaceUp ? 0 : 1)
                 }
                 .frame(width: 300, height: 200)
@@ -210,5 +217,5 @@ struct FlashcardView: View {
 }
 
 #Preview {
-    LearnLanguageView(model: Model.sampleData())
+    LearnLanguageView()
 }

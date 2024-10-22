@@ -9,9 +9,10 @@ import SwiftUI
 
 @main
 struct LearnLanguageApp: App {
+    @StateObject private var viewModel = ViewModel(model: Model.sampleData())
     var body: some Scene {
         WindowGroup {
-            LearnLanguageView(model: Model.sampleData())
+            LearnLanguageView().environmentObject(viewModel)
         }
     }
 }
